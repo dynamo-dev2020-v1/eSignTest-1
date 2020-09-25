@@ -1,0 +1,187 @@
+
+<flowSequence xmlns="http://dynamo.documill.com/schemas/flow"
+              xmlns:cc="http://dynamo.documill.com/schemas/taglib/core/conditional"
+              xmlns:cdlg="http://dynamo.documill.com/schemas/taglib/compose/dialog"
+              xmlns:cl="http://dynamo.documill.com/schemas/taglib/core/loop"
+              xmlns:cv="http://dynamo.documill.com/schemas/taglib/core/var"
+              xmlns:ddoc="http://dynamo.documill.com/schemas/taglib/dynamodoc"
+              xmlns:dt="http://dynamo.documill.com/schemas/taglib/date"
+              xmlns:fl="http://dynamo.documill.com/schemas/taglib/core/flow"
+              xmlns:fo="http://dynamo.documill.com/schemas/taglib/format"
+              xmlns:fs="http://dynamo.documill.com/schemas/taglib/formselect"
+              xmlns:pdf="http://dynamo.documill.com/schemas/taglib/pdf"
+              xmlns:sfch="http://dynamo.documill.com/schemas/taglib/salesforce/chatter"
+              xmlns:sfcrud="http://dynamo.documill.com/schemas/taglib/salesforce/crud"
+              xmlns:sfem="http://dynamo.documill.com/schemas/taglib/salesforce/email"
+              xmlns:sff="http://dynamo.documill.com/schemas/taglib/salesforce/fields"
+              xmlns:sffile="http://dynamo.documill.com/schemas/taglib/salesforce/file"
+              xmlns:soql="http://dynamo.documill.com/schemas/taglib/salesforce/soql"
+              xmlns:wizard="http://dynamo.documill.com/schemas/taglib/wizard"
+              xmlns:pdfsig="http://dynamo.documill.com/schemas/taglib/pdf/signature"
+              id="compose"
+              name="Compose Flow">
+  <startFlow id="Before">
+    <events>
+      <defaultEvent step="Init" />
+    </events>
+    <steps>
+      <step id="Init" name="Init">
+        <logic>
+          <cc:choose>
+            <cc:when test="${signatureLicense.termMaxUsage-signatureLicense.usageTerm &gt; 0}">
+              <fl:start segment=":next" label="Continue" />
+            </cc:when>
+            <cc:otherwise>
+              <fl:next label="No Signatures" step="No signatures left" />
+            </cc:otherwise>
+          </cc:choose>
+        </logic>
+      </step>
+      <screenStep id="No signatures left" name="No signatures left" screen="Main/No signatures leftScreen.html" />
+      <step id="Exit" name="Exit">
+        <logic>
+          <fl:finish />
+        </logic>
+      </step>
+    </steps>
+  </startFlow>
+  <standardFlow id="Main">
+    <events>
+      <defaultEvent step="eSign" />
+    </events>
+    <steps>
+      <screenStep id="eSign" name="eSign" screen="Main/eSignScreen.html" />
+      <step id="Create PDF" name="Create PDF">
+        <logic>
+          <cv:set var="startTop" value="${580}" />
+          <cv:set var="startLeft" value="${55}" />
+          <cv:set var="height" value="${170}" />
+          <cv:set var="signPDF" value="true" />
+          <cv:set var="multiSign" value="false" />
+          <cv:set var="signaturePageNumber" value="-1" />
+          <fl:composeContent var="composeDoc" template="${doc[&quot;Body Content&quot;]}" />
+          <pdf:exportPDF var="pdf" document="${composeDoc}" />
+          <cc:if test="${signPDF}">
+            <fl:composeContent var="signatures" template="${doc[&quot;Signatures section&quot;]}" />
+            <pdf:exportPDF var="signatures" document="${signatures}" />
+            <pdf:mergePDF firstDoc="${pdf}" secondDoc="${signatures}" var="pdf" name="${pdf.fileName}" />
+          </cc:if>
+          <cc:choose>
+            <cc:when test="${signPDF}">
+              <cc:when test="${multiSign}">
+                <fl:next step="Multiple signatures test" />
+              </cc:when>
+              <cc:otherwise>
+                <fl:next step="Sign PDF" />
+              </cc:otherwise>
+            </cc:when>
+            <cc:otherwise>
+              <fl:next step="download" />
+            </cc:otherwise>
+          </cc:choose>
+        </logic>
+      </step>
+      <step id="Sign PDF" name="Sign PDF">
+        <logic>
+          <!-- x=45 y=50 -->
+          <pdfsig:signPDF value="${pdf}"
+                          var="pdf"
+                          signerName="John Doe"
+                          signerOrgName="Documill"
+                          signerEmail="dynamo.support@documill.com"
+                          signerLocation="Espoo"
+                          signingReason="Signed through Dynamo"
+                          signatureImage="${signatureImage}"
+                          signaturePositionX="${startLeft}"
+                          signaturePositionY="${startTop}"
+                          signatureID="1234567890"
+                          signaturePageNum="${signaturePageNumber}" />
+          <fl:next step="download" />
+        </logic>
+      </step>
+      <step id="Multiple signatures" name="Multiple signatures">
+        <logic>
+          <cv:setCollection var="names">
+            <cv:addListItem value="Name 1" />
+            <cv:addListItem value="Name 2" />
+            <cv:addListItem value="Name 3" />
+            <cv:addListItem value="Name 4" />
+          </cv:setCollection>
+          <cv:set var="pdf" value="${pdf}" />
+          <cl:forEach value="${names}" var="name" varStatus="loopStatus">
+            <fl:setMessage message="Sign ${name}" />
+            <pdfsig:signPDF value="${pdf}"
+                            var="pdf"
+                            signerName="${name}"
+                            signerOrgName="Documill"
+                            signerEmail="email@nomail.dot"
+                            signerLocation="Espoo"
+                            signingReason="Signed through Dynamo"
+                            signatureImage="${signatureImage}"
+                            signaturePositionX="${startLeft}"
+                            signaturePositionY="${startTop-(loopStatus.index*height)}"
+                            signatureID="1234567890"
+                            signaturePageNum="${signaturePageNumber}" />
+          </cl:forEach>
+          <fl:next step="download" />
+        </logic>
+      </step>
+      <screenStep id="download" name="download" screen="Main/downloadScreen.html" />
+      <step id="exit" name="exit">
+        <logic>
+          <fl:finish />
+        </logic>
+      </step>
+      <step id="Multiple signatures test" name="Multiple signatures test">
+        <logic>
+          <cv:setCollection var="names">
+            <cv:addListItem value="Name 1" />
+            <cv:addListItem value="Name 2" />
+            <cv:addListItem value="Name 3" />
+            <cv:addListItem value="Name 4" />
+          </cv:setCollection>
+          <cv:set var="index" value="0" />
+          <pdfsig:signPDF value="${pdf}"
+                          var="pdf"
+                          signerName="${names[index]}"
+                          signerOrgName="Documill"
+                          signerEmail="email@nomail.dot"
+                          signerLocation="Espoo"
+                          signingReason="Signed through Dynamo"
+                          signatureImage="${signatureImage}"
+                          signaturePositionX="${startLeft}"
+                          signaturePositionY="${startTop-(index*height)}"
+                          signatureID="1234567890"
+                          signaturePageNum="${signaturePageNumber}" />
+          <cv:set var="index" value="1" />
+          <pdfsig:signPDF value="${pdf}"
+                          var="pdf"
+                          signerName="${names[index]}"
+                          signerOrgName="Documill"
+                          signerEmail="email@nomail.dot"
+                          signerLocation="Espoo"
+                          signingReason="Signed through Dynamo"
+                          signatureImage="${signatureImage}"
+                          signaturePositionX="${startLeft}"
+                          signaturePositionY="${startTop-(index*height)}"
+                          signatureID="1234567890"
+                          signaturePageNum="${signaturePageNumber}" />
+          <cv:set var="index" value="2" />
+          <pdfsig:signPDF value="${pdf}"
+                          var="pdf"
+                          signerName="${names[index]}"
+                          signerOrgName="Documill"
+                          signerEmail="email@nomail.dot"
+                          signerLocation="Espoo"
+                          signingReason="Signed through Dynamo"
+                          signatureImage="${signatureImage}"
+                          signaturePositionX="${startLeft}"
+                          signaturePositionY="${startTop-(index*height)}"
+                          signatureID="1234567890"
+                          signaturePageNum="${signaturePageNumber}" />
+          <fl:next step="download" />
+        </logic>
+      </step>
+    </steps>
+  </standardFlow>
+</flowSequence>

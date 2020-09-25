@@ -1,0 +1,28 @@
+<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" id="Main/eSignScreen.html" name="Main/eSignScreen.html"><head>
+  <meta charset="utf-8" />
+  <meta name="dynamo-type" content="form" />
+<link rel="stylesheet" type="dynamo/css" href="Main/style.css" /></head>
+
+<body>
+  <div class="screen slds modal" aria-hidden="false" role="dialog">
+    <div class="slds-modal__container">
+      <div class="slds-modal__header">
+        <h2 class="slds-text-heading--medium">Sign Here</h2>
+      </div>
+    <div class="slds-modal__content slds-p-around--medium">
+        <div class="group">
+
+          <dyn-signature name="signatureImage">Signature element will be here</dyn-signature><p><br /></p><p>Signatures: <span class="inline dyn-tagged" dyn-content="signatureLicense.usageTerm ">&lt;used&gt;</span>/<span class="inline dyn-tagged" dyn-content="signatureLicense.termMaxUsage">&lt;available&gt;</span></p>
+        </div>
+      </div>
+      <div class="slds-modal__footer button-group">
+        <button class="slds-button slds-button--neutral" dyn-next="exit" name="Cancel" type="submit">Cancel</button>
+        <button class="slds-button slds-button--neutral slds-button--brand" dyn-next="Create PDF" type="submit" dyn-next-message="Signing" name="ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+
+
+
+</body></html>
